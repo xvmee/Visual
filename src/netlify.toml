@@ -1,0 +1,11 @@
+[build]
+  command = "vite build --config vite.netlify.config.ts"
+  publish = "dist"
+  
+[build.environment]
+  NODE_ENV = "production"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

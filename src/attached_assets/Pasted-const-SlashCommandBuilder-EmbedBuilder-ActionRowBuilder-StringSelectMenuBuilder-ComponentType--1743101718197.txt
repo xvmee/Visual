@@ -1,0 +1,163 @@
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType } = require('discord.js');
+
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName('help')
+        .setDescription('Wyświetla listę dostępnych komend'),
+    
+    async execute(interaction) {
+        // Kategoryzacja komend
+        const categories = {
+            'administracyjne': {
+                emoji: '🛡️',
+                color: '#f04a4a',
+                description: 'Zarządzanie serwerem i użytkownikami',
+                commands: ['ban', 'kick', 'mute', 'unmute', 'unban', 'clear']
+            },
+            'narzędzia': {
+                emoji: '🔧',
+                color: '#4a9ff0',
+                description: 'Przydatne funkcje i ustawienia',
+                commands: ['ping', 'help', 'customcommands', 'premium-handler']
+            },
+            'współpraca': {
+                emoji: '🤝',
+                color: '#4af04a',
+                description: 'Reklama i współpraca międzyserwerowa',
+                commands: ['wspolpraca', 'autowspolpraca']
+            },
+            '4fun': {
+                emoji: '🎮',
+                color: '#f0c64a',
+                description: 'Gry i zabawy dla społeczności',
+                commands: ['8ball', 'losowaliczba', 'mem', 'coinflip', 'kamiennozycepapier', 'wybierz']
+            },
+            'poziomy': {
+                emoji: '⭐',
+                color: '#a64aff',
+                description: 'System poziomów i rankingu',
+                commands: ['rank', 'ranking', 'poziomy-ustawienia', 'admin-poziom']
+            },
+            'weryfikacja': {
+                emoji: '✅',
+                color: '#00cc88',
+                description: 'System weryfikacji użytkowników',
+                commands: ['weryfikacja-send', 'weryfikacja-settings']
+            },
+            'tickety': {
+                emoji: '🎫',
+                color: '#ff8c42',
+                description: 'System ticketów i wsparcia',
+                commands: ['ticketpanel', 'ticket-settings', 'close-ticket']
+            },
+            'przywitania': {
+                emoji: '👋',
+                color: '#ee82ee',
+                description: 'System powitalny dla nowych członków',
+                commands: ['przywitanie']
+            }
+        };
+        
+        // Początkowy embed głównego menu
+        const mainEmbed = new EmbedBuilder()
+            .setTitle('```💜``` Visual × Pomoc')
+            .setDescription('> *Witaj w pomocy bota Visual!* \n> *Wybierz kategorię z menu poniżej*\n\n> **📝 Wybierz kategorię**')
+            .setColor('#FF69B4')
+            .setThumbnail(interaction.client.user.displayAvatarURL())
+            .addFields(
+                { name: '📚 Komendy', value: '```yml\n• ' + interaction.client.commands.size + ' komend slash\n```', inline: true },
+                { name: '🌟 Funkcje', value: '```yml\n• Moderacja\n• System poziomów\n• System ticketów\n• System weryfikacji\n• System powitań\n• Własne komendy\n• Gry i zabawy\n```', inline: true },
+                { name: '\u200B', value: '> **Visual - Twój Asystent!**', inline: false }
+            )
+            .setImage('https://i.imgur.com/ao9EMiz.png') 
+            .setTimestamp()
+            .setFooter({ text: 'Visual Bot', iconURL: interaction.client.user.displayAvatarURL() });
+        
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new StringSelectMenuBuilder()
+                    .setCustomId('help_category')
+                    .setPlaceholder('📝 Wybierz kategorię komend')
+                    .addOptions(
+                        Object.entries(categories).map(([key, value]) => ({
+                            label: key.charAt(0).toUpperCase() + key.slice(1),
+                            description: value.description,
+                            value: key,
+                            emoji: value.emoji
+                        }))
+                    )
+            );
+            
+        const response = await interaction.reply({
+            embeds: [mainEmbed],
+            components: [row],
+            ephemeral: true
+        });
+        
+        const collector = response.createMessageComponentCollector({
+            time: 5 * 60 * 1000, 
+        });
+        
+        collector.on('collect', async i => {
+            if (i.user.id !== interaction.user.id) {
+                return i.reply({
+                    content: '> **To menu nie jest dla Ciebie!**',
+                    ephemeral: true
+                });
+            }
+            
+            if (i.isStringSelectMenu()) {
+                const selectedCategory = i.values[0];
+                const categoryInfo = categories[selectedCategory];
+                
+                const categoryEmbed = new EmbedBuilder()
+                    .setTitle(`\`\`\`${categoryInfo.emoji}\`\`\`  Visual × ${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}`)
+                    .setDescription(`> *${categoryInfo.description}*\n\n> **Lista dostępnych komend w tej kategorii:**`)
+                    .setColor(categoryInfo.color || '#FF69B4')
+                    .setThumbnail(interaction.client.user.displayAvatarURL())
+                    .setTimestamp()
+                    .setFooter({ text: 'Visual Bot | Wybierz inną kategorię lub wróć do menu głównego', iconURL: interaction.client.user.displayAvatarURL() });
+                
+                // Dla kategorii pokazujemy komendy slash
+                const { commands } = interaction.client;
+                const categoryCommands = commands.filter(cmd => categoryInfo.commands.includes(cmd.data.name));
+                
+                if (categoryCommands.size > 0) {
+                    categoryCommands.forEach(cmd => {
+                        categoryEmbed.addFields({
+                            name: `${categoryInfo.emoji} \`/${cmd.data.name}\``,
+                            value: `\`\`\`yml\n• ${cmd.data.description}\n\`\`\``,
+                            inline: false
+                        });
+                    });
+                } else {
+                    categoryEmbed.addFields({
+                        name: '❌ Brak komend',
+                        value: `\`\`\`yml\n• W tej kategorii nie ma jeszcze komend\n\`\`\``,
+                        inline: false
+                    });
+                }
+                
+                await i.update({ embeds: [categoryEmbed], components: [row] });
+            }
+        });
+        
+        collector.on('end', async (collected, reason) => {
+            if (reason === 'time') {
+                const timeoutEmbed = new EmbedBuilder()
+                    .setTitle('```⏰``` Visual × Sesja zakończona ')
+                    .setDescription('> *Czas na przeglądanie centrum pomocy minął!*\n\n> **💫 Użyj komendy `/help` ponownie, aby otworzyć centrum pomocy.**')
+                    .setColor('#FF69B4')
+                    .setThumbnail(interaction.client.user.displayAvatarURL())
+                    .setImage('https://i.imgur.com/yTEloMY.png') 
+                    .setTimestamp()
+                    .setFooter({ text: 'Visual Bot | Czas sesji: 5 minut', iconURL: interaction.client.user.displayAvatarURL() });
+                
+                await interaction.editReply({
+                    embeds: [timeoutEmbed],
+                    components: []
+                }).catch(() => {});
+            }
+        });
+    }
+};
