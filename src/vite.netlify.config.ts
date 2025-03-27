@@ -5,23 +5,13 @@ import { resolve } from 'path';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  root: 'client',
+  publicDir: 'public',
   build: {
-    outDir: 'dist',
-    rollupOptions: {
-      input: {
-        main: resolve(__dirname, 'client/netlify-index.html'),
-      },
-      external: [
-        'express',
-        'passport',
-        'passport-local',
-        'express-session',
-        'connect-pg-simple',
-        'ws',
-        'memorystore',
-        '@neondatabase/serverless'
-      ],
-    },
+    outDir: '../dist',
+    emptyOutDir: true,
+    minify: true,
+    cssMinify: true,
   },
   resolve: {
     alias: [
